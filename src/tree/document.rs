@@ -1,17 +1,17 @@
-use super::ts;
+use super::mts;
 
 pub use super::Traverse;
 
-pub use ts::Params;
+pub use mts::Params;
 
 pub struct Document {
     text: String,
-    tree: ts::Tree,
+    tree: mts::Tree,
 }
 
 impl Document {
-    pub fn new(text: String, language: Language, params: Params) -> Self {
-        let tree = ts::parse(&text, language, params);
+    pub fn new(text: String, language: &Language, params: Params) -> Self {
+        let tree = mts::Tree::new(&text, language, params);
         Self { text, tree }
     }
 
@@ -19,14 +19,14 @@ impl Document {
         &self.text
     }
 
-    pub fn tree(&self) -> &ts::Tree {
+    pub fn tree(&self) -> &mts::Tree {
         &self.tree
     }
 
     pub fn walk(&self) -> Cursor {
         Cursor {
             doc: self,
-            ts: self.tree.walk(),
+            mts: self.tree.walk(),
         }
     }
 }
@@ -49,7 +49,7 @@ use std::ops::Deref;
 #[derive(Clone)]
 pub struct Cursor<'d> {
     doc: &'d Document,
-    ts: ts::Cursor<'d>,
+    mts: mts::Cursor<'d>,
 }
 
 impl<'d> Traverse for Cursor<'d> {
@@ -58,35 +58,35 @@ impl<'d> Traverse for Cursor<'d> {
     fn node(&self) -> Self::Node {
         Node {
             doc: self.doc,
-            ts: self.ts.node(),
+            mts: self.mts.node(),
         }
     }
 
     fn goto_next_sibling(&mut self) -> bool {
-        self.ts.goto_next_sibling()
+        self.mts.goto_next_sibling()
     }
 
     fn goto_first_child(&mut self) -> bool {
-        self.ts.goto_first_child()
+        self.mts.goto_first_child()
     }
 
     fn goto_parent(&mut self) -> bool {
-        self.ts.goto_parent()
+        self.mts.goto_parent()
     }
 }
 
 impl<'d> Deref for Cursor<'d> {
-    type Target = ts::Cursor<'d>;
+    type Target = mts::Cursor<'d>;
 
     fn deref(&self) -> &Self::Target {
-        &self.ts
+        &self.mts
     }
 }
 
 #[derive(Clone)]
 pub struct Node<'d> {
     doc: &'d Document,
-    ts: ts::Node<'d>,
+    mts: mts::Node<'d>,
 }
 
 impl<'d> Node<'d> {
@@ -97,17 +97,17 @@ impl<'d> Node<'d> {
     pub fn walk(&self) -> Cursor<'d> {
         Cursor {
             doc: self.doc,
-            ts: self.ts.walk(),
+            mts: self.mts.walk(),
         }
     }
 }
 
 impl<'d> Deref for Node<'d> {
-    type Target = ts::Node<'d>;
+    type Target = mts::Node<'d>;
 
     fn deref(&self) -> &Self::Target {
-        &self.ts
+        &self.mts
     }
 }
 
-pub use ts::Language;
+pub use mts::Language;

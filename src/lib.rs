@@ -7,7 +7,7 @@ pub use tree::document;
 pub mod lang;
 
 impl pattern::Pattern<String> {
-    pub fn from_query(query: String, target: document::Language) -> Self {
+    pub fn from_query(query: String, target: &lang::Language) -> Self {
         let document = document::Document::new(query, target, Default::default());
 
         use document::Traverse;

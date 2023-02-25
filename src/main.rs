@@ -15,10 +15,10 @@ fn main() {
 
     let language = args.language.load();
 
-    let pattern = st::pattern::Pattern::from_query(args.query, language);
+    let pattern = st::pattern::Pattern::from_query(args.query, &language);
 
     let text = std::fs::read_to_string(&args.file).unwrap();
-    let document = st::document::Document::new(text, language, Default::default());
+    let document = st::document::Document::new(text, &language, Default::default());
 
     for m in pattern.find_iter(document.walk()) {
         let start = m.start.node().start_position();

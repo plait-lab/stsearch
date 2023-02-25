@@ -13,6 +13,7 @@ impl Select {
         match self {
             Select::Javascript => ts_javascript::language(),
         }
+        .into()
     }
 }
 
