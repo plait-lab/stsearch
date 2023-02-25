@@ -4,6 +4,8 @@ pub mod pattern;
 pub mod tree;
 pub use tree::document;
 
+pub mod lang;
+
 impl pattern::Pattern<String> {
     pub fn from_query(query: String, target: document::Language) -> Self {
         let document = document::Document::new(query, target, Default::default());

@@ -5,6 +5,7 @@ use stsearch as st;
 #[derive(Parser)]
 #[command(version)]
 struct Args {
+    language: st::lang::Select,
     query: String,
     file: std::path::PathBuf,
 }
@@ -12,7 +13,7 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let language = tree_sitter_javascript::language();
+    let language = args.language.load();
 
     let pattern = st::pattern::Pattern::from_query(args.query, language);
 
