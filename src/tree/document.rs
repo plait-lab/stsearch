@@ -1,5 +1,7 @@
 use super::ts;
 
+pub use super::Traverse;
+
 pub use ts::Params;
 
 pub struct Document {
@@ -50,23 +52,25 @@ pub struct Cursor<'d> {
     ts: ts::Cursor<'d>,
 }
 
-impl<'t> Cursor<'t> {
-    pub fn node(&self) -> Node<'t> {
+impl<'d> Traverse for Cursor<'d> {
+    type Node = Node<'d>;
+
+    fn node(&self) -> Self::Node {
         Node {
             doc: self.doc,
             ts: self.ts.node(),
         }
     }
 
-    pub fn goto_next_sibling(&mut self) -> bool {
+    fn goto_next_sibling(&mut self) -> bool {
         self.ts.goto_next_sibling()
     }
 
-    pub fn goto_first_child(&mut self) -> bool {
+    fn goto_first_child(&mut self) -> bool {
         self.ts.goto_first_child()
     }
 
-    pub fn goto_parent(&mut self) -> bool {
+    fn goto_parent(&mut self) -> bool {
         self.ts.goto_parent()
     }
 }
