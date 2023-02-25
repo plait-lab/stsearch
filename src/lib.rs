@@ -8,7 +8,8 @@ pub mod lang;
 
 impl pattern::Pattern<String> {
     pub fn from_query(query: String, target: &lang::Language) -> Self {
-        let document = document::Document::new(query, target, Default::default());
+        let pattern_language = lang::Select::Semgrep.load().nest("text", target);
+        let document = document::Document::new(query, &pattern_language, Default::default());
 
         use document::Traverse;
 
@@ -16,7 +17,9 @@ impl pattern::Pattern<String> {
             .walk()
             .leaves()
             .map(|node| {
-                if node.kind() == "identifier" && node.text() == "$_" {
+                if node.language() == *pattern_language
+                    && (node.kind() == "metavar" || node.kind() == "ellipsis")
+                {
                     pattern::Token::Subtree
                 } else {
                     pattern::Token::Leaf(node.text().to_owned())
