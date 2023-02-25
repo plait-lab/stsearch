@@ -2,3 +2,8 @@
 name = "stsearch"
 version = "0.1.0"
 edition = "2021"
+
+[dependencies]
+clap = { version = "4.1", features = ["derive"] }
+tree-sitter = "0.20"
+tree-sitter-javascript = "0.20"
