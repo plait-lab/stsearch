@@ -1,1 +1,7 @@
 /target
+
+# tree-sitter generate
+/src/lang/ts_*/**
+!/src/lang/ts_*/grammar.js
+!/src/lang/ts_*/**/
+!/src/lang/ts_*/src/scanner.c
