@@ -19,8 +19,15 @@ impl<T> Pattern<T> {
         C: Traverse + Checkpoint + Clone,
         T: PartialEq<C::Leaf>,
     {
+        let start = self
+            .sequence
+            .iter()
+            // Skip any non-greedy Kleen stars
+            .take_while(|t| matches!(t, Token::Siblings))
+            .count();
+        let sequence = &self.sequence[start..];
         loop {
-            match self.find_impl(cursor) {
+            match Self::find_impl(sequence.iter(), cursor) {
                 Ok(r#match) => return Some(r#match),
                 Err(start) => cursor = start,
             }
@@ -47,15 +54,24 @@ impl<T> Pattern<T> {
         C: Traverse + Checkpoint + Clone,
         T: PartialEq<C::Leaf>,
     {
-        self.find_impl(start).ok()
+        Self::find_impl(self.sequence.iter(), start).ok()
     }
 
-    fn find_impl<C>(&self, start: C) -> Result<Match<C>, C>
+    fn find_impl<'s, S, C>(mut seq: S, start: C) -> Result<Match<C>, C>
     where
+        S: DoubleEndedIterator<Item = &'s Token<T>> + Checkpoint + Clone,
         C: Traverse + Checkpoint + Clone,
-        T: PartialEq<C::Leaf>,
+        T: 's + PartialEq<C::Leaf>,
     {
-        match match_at(self.sequence.iter(), start.clone()) {
+        loop {
+            // FIX: Workaround, match_at includes an extra subtree otherwise
+            let seq_c = seq.checkpoint();
+            if !matches!(seq.next_back(), Some(Token::Siblings)) {
+                seq.restore(seq_c);
+                break;
+            }
+        }
+        match match_at(seq.into_iter(), start.clone()) {
             Some(end) => Ok(Match { start, end }),
             None => Err(start),
         }
