@@ -6,9 +6,9 @@ where
     C: Traverse + Checkpoint,
     T: 'p + PartialEq<C::Leaf>,
 {
-    impl CloneCheckpoint for std::iter::Once<bool> {}
+    impl CloneCheckpoint for std::iter::Once<()> {}
 
-    let mut first = std::iter::once(true);
+    let mut phantom = std::iter::once(());
     let mut checkpoints = vec![];
 
     loop {
@@ -16,14 +16,22 @@ where
             let pattern_c = pattern.checkpoint();
 
             match pattern.next() {
-                Some(pattern) => {
-                    if !(first.next().unwrap_or_default() || cursor.move_next_subtree()) {
+                Some(token) => {
+                    if !(phantom.next().is_some() || cursor.move_next_subtree()) {
                         break;
                     }
 
-                    match pattern {
+                    match token {
+                        pattern::Token::Siblings => {
+                            checkpoints.push((pattern_c, cursor.checkpoint(), phantom.checkpoint(), false));
+
+                            assert!(!phantom.next().is_some());
+                            phantom = std::iter::once(());
+
+                            checkpoints.push((pattern.checkpoint(), cursor.checkpoint(), phantom.checkpoint(), true));
+                        }
                         pattern::Token::Subtree => {
-                            checkpoints.push((pattern_c, cursor.checkpoint(), first.checkpoint()));
+                            checkpoints.push((pattern_c, cursor.checkpoint(), phantom.checkpoint(), false));
                         }
                         pattern::Token::Leaf(t) => {
                             let leaf = cursor.move_first_leaf();
@@ -39,15 +47,22 @@ where
             };
         }
         loop {
-            if let Some((pattern_c, cursor_c, first_c)) = checkpoints.pop() {
+            if let Some((pattern_c, cursor_c, phantom_c, siblings)) = checkpoints.pop() {
                 pattern.restore(pattern_c);
                 cursor.restore(cursor_c);
-                first.restore(first_c);
+                phantom.restore(phantom_c);
 
-                assert!(!first.next().unwrap_or_default());
-                if cursor.move_first_child() {
-                    first = std::iter::once(true);
-                    break;
+                if siblings {
+                    if phantom.next().is_some() || cursor.move_next_subtree() {
+                        checkpoints.push((pattern.checkpoint(), cursor.checkpoint(), phantom.checkpoint(), true));
+                        break;
+                    }
+                } else {
+                    assert!(!phantom.next().is_some());
+                    if cursor.move_first_child() {
+                        phantom = std::iter::once(());
+                        break;
+                    }
                 }
             } else {
                 return None;

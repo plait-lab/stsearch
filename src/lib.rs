@@ -17,9 +17,9 @@ impl pattern::Pattern<String> {
             .walk()
             .leaves()
             .map(|node| {
-                if node.language() == *pattern_language
-                    && (node.kind() == "metavar" || node.kind() == "ellipsis")
-                {
+                if node.language() == *pattern_language && node.kind() == "ellipsis" {
+                    pattern::Token::Siblings
+                } else if node.language() == *pattern_language && node.kind() == "metavar" {
                     pattern::Token::Subtree
                 } else {
                     pattern::Token::Leaf(node.text().to_owned())

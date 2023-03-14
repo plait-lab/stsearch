@@ -7,6 +7,7 @@ pub struct Pattern<T> {
 
 #[derive(Clone, Copy, Debug)]
 pub enum Token<T> {
+    Siblings,
     Subtree,
     Leaf(T),
 }
