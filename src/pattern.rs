@@ -90,9 +90,17 @@ where
             .take()
             .and_then(|cursor| self.pattern.find(cursor))
             .map(|r#match| {
-                let mut end = r#match.end.clone();
-                if end.move_next_subtree() {
-                    self.cursor = Some(end);
+                let mut start = r#match.start.clone();
+                if matches!(self.pattern.sequence.first(), Some(Token::Subtree)) {
+                    // FIX: might cause duplicate matches
+                    if start.move_first_child() || start.move_next_subtree() {
+                        self.cursor = Some(start);
+                    }
+                } else {
+                    start.move_first_leaf();
+                    if start.move_next_subtree() {
+                        self.cursor = Some(start);
+                    }
                 }
                 r#match
             })
