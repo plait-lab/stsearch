@@ -16,13 +16,15 @@ impl pattern::Pattern<String> {
         document
             .walk()
             .leaves()
-            .map(|node| {
+            .flat_map(|node| {
                 if node.language() == *pattern_language && node.kind() == "ellipsis" {
-                    pattern::Token::Siblings
+                    Some(pattern::Token::Siblings)
                 } else if node.language() == *pattern_language && node.kind() == "metavar" {
-                    pattern::Token::Subtree
+                    Some(pattern::Token::Subtree)
+                } else if !node.text().is_empty() {
+                    Some(pattern::Token::Leaf(node.text().to_owned()))
                 } else {
-                    pattern::Token::Leaf(node.text().to_owned())
+                    None
                 }
             })
             .collect()
