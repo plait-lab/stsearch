@@ -3,6 +3,7 @@ use clap::Parser;
 use stsearch as st;
 
 use st::document::{Subtree, Traverse};
+use st::tree::mts::Tree;
 
 #[derive(Parser)]
 #[command(version)]
@@ -20,7 +21,8 @@ fn main() {
     let pattern = st::pattern::Pattern::from_query(args.query, &language);
 
     let text = std::fs::read_to_string(&args.file).unwrap();
-    let document = st::document::Document::new(text, &language, Default::default());
+    let document =
+        st::document::new::<&str, Tree>(&text, Tree::new(&text, &language, Default::default()));
 
     for m in pattern.find_iter(document.walk()) {
         let start = m.start.node().start_position();

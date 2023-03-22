@@ -2,15 +2,21 @@ pub use super::{Subtree, Traverse};
 
 use std::borrow::Borrow;
 
-use super::mts; // default tree
-
-pub struct Document<S = String, T = mts::Tree>
+pub struct Document<S, T>
 where
     S: Borrow<str>,
     for<'t> &'t T: Subtree,
 {
     text: S,
     tree: T,
+}
+
+pub fn new<S, T>(text: S, tree: T) -> Document<S, T>
+where
+    S: Borrow<str>,
+    for<'t> &'t T: Subtree,
+{
+    Document::<S, T> { text, tree }
 }
 
 impl<S, T> Document<S, T>
@@ -46,7 +52,7 @@ where
 use std::ops::Deref;
 
 #[derive(Clone)]
-pub struct Cursor<'d, C = mts::Cursor<'d>>
+pub struct Cursor<'d, C>
 where
     C: Traverse,
 {
@@ -92,20 +98,23 @@ where
 }
 
 #[derive(Clone, Copy)]
-pub struct Node<'d, N: Subtree = mts::Node<'d>> {
+pub struct Node<'d, N: Subtree> {
     text: &'d str,
     node: N,
 }
 
-use std::ops::Index;
-
-impl<'d, N: Subtree> Node<'d, N>
+impl<'d, N: Subtree + Deref> Node<'d, N>
 where
-    for<'n> str: Index<&'n N>,
+    N::Target: ByteRange,
 {
-    pub fn text(&self) -> &'d <str as Index<&'_ N>>::Output {
-        &self.text[&self.node]
+    pub fn text(&self) -> &'d str {
+        &self.text[self.node.byte_range()]
     }
+}
+
+pub trait ByteRange {
+    #[must_use]
+    fn byte_range(&self) -> std::ops::Range<usize>;
 }
 
 impl<'d, N: Subtree> Subtree for Node<'d, N> {
@@ -125,23 +134,5 @@ impl<'d, N: Subtree> Deref for Node<'d, N> {
 
     fn deref(&self) -> &Self::Target {
         &self.node
-    }
-}
-
-impl<S> Document<S, mts::Tree>
-where
-    S: Borrow<str>,
-{
-    pub fn new(text: S, language: &mts::Language, params: mts::Params) -> Self {
-        let tree = mts::Tree::new(text.borrow(), language, params);
-        Self { text, tree }
-    }
-}
-
-impl<'n> Index<&'n mts::Node<'_>> for str {
-    type Output = str;
-
-    fn index(&self, index: &'n mts::Node) -> &Self::Output {
-        &self[index.byte_range()]
     }
 }

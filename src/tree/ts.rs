@@ -63,3 +63,9 @@ impl<'t> Subtree for Node<'t> {
         (&self).walk()
     }
 }
+
+impl super::document::ByteRange for Node<'_> {
+    fn byte_range(&self) -> std::ops::Range<usize> {
+        self.byte_range()
+    }
+}

@@ -6,10 +6,13 @@ pub use tree::document;
 
 pub mod lang;
 
+use tree::mts::{Cursor, Node, Tree};
+
 impl pattern::Pattern<String> {
     pub fn from_query(query: String, target: &lang::Language) -> Self {
         let pattern_language = lang::Select::Semgrep.load().nest("text", target);
-        let document = document::Document::new(query, &pattern_language, Default::default());
+        let tree = Tree::new(&query, &pattern_language, Default::default());
+        let document = document::new::<String, Tree>(query, tree);
 
         use document::{Subtree, Traverse};
 
@@ -31,10 +34,10 @@ impl pattern::Pattern<String> {
     }
 }
 
-impl PartialEq<document::Node<'_>> for String {
-    fn eq(&self, other: &document::Node) -> bool {
+impl PartialEq<document::Node<'_, Node<'_>>> for String {
+    fn eq(&self, other: &document::Node<Node>) -> bool {
         self == other.text()
     }
 }
 
-impl<'d> algorithm::CloneCheckpoint for document::Cursor<'d> {}
+impl algorithm::CloneCheckpoint for document::Cursor<'_, Cursor<'_>> {}
