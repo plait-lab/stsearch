@@ -2,6 +2,8 @@ use clap::Parser;
 
 use stsearch as st;
 
+use st::document::{Subtree, Traverse};
+
 #[derive(Parser)]
 #[command(version)]
 struct Args {

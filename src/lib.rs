@@ -11,7 +11,7 @@ impl pattern::Pattern<String> {
         let pattern_language = lang::Select::Semgrep.load().nest("text", target);
         let document = document::Document::new(query, &pattern_language, Default::default());
 
-        use document::Traverse;
+        use document::{Subtree, Traverse};
 
         document
             .walk()

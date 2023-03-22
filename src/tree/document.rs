@@ -1,6 +1,6 @@
 use super::mts;
 
-pub use super::Traverse;
+pub use super::{Subtree, Traverse};
 
 pub use mts::Params;
 
@@ -22,8 +22,13 @@ impl Document {
     pub fn tree(&self) -> &mts::Tree {
         &self.tree
     }
+}
 
-    pub fn walk(&self) -> Cursor {
+impl<'d> Subtree for &'d Document {
+    type Cursor = Cursor<'d>;
+    type Node = Node<'d>;
+
+    fn walk(self) -> Cursor<'d> {
         Cursor {
             doc: self,
             mts: self.tree.walk(),
@@ -93,8 +98,13 @@ impl<'d> Node<'d> {
     pub fn text(&self) -> &'d str {
         &self.doc[self..=self]
     }
+}
 
-    pub fn walk(&self) -> Cursor<'d> {
+impl<'d> Subtree for Node<'d> {
+    type Cursor = Cursor<'d>;
+    type Node = Node<'d>;
+
+    fn walk(self) -> Cursor<'d> {
         Cursor {
             doc: self.doc,
             mts: self.mts.walk(),

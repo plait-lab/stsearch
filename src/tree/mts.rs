@@ -4,7 +4,7 @@ use super::ts;
 
 use std::ops::Deref;
 
-pub use super::Traverse;
+pub use super::{Subtree, Traverse};
 
 pub use ts::Params;
 
@@ -63,8 +63,13 @@ impl Tree {
             .map(|i| &self.nested[i].1)
             .ok()
     }
+}
 
-    pub fn walk(&self) -> Cursor {
+impl<'t> Subtree for &'t Tree {
+    type Cursor = Cursor<'t>;
+    type Node = Node<'t>;
+
+    fn walk(self) -> Self::Cursor {
         Cursor {
             parent: None,
             current: self,
@@ -149,8 +154,13 @@ impl<'t> Node<'t> {
     pub fn language(&self) -> ts::Language {
         self.tree.language()
     }
+}
 
-    pub fn walk(&self) -> Cursor<'t> {
+impl<'t> Subtree for Node<'t> {
+    type Cursor = Cursor<'t>;
+    type Node = Node<'t>;
+
+    fn walk(self) -> Cursor<'t> {
         Cursor {
             parent: None,
             current: self.tree,

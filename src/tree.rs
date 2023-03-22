@@ -2,8 +2,16 @@ pub mod document;
 pub mod mts;
 pub mod ts;
 
+pub trait Subtree {
+    type Cursor: Traverse;
+    type Node: Subtree;
+
+    #[must_use]
+    fn walk(self) -> Self::Cursor;
+}
+
 pub trait Traverse {
-    type Node;
+    type Node: Subtree;
 
     #[must_use]
     fn node(&self) -> Self::Node;

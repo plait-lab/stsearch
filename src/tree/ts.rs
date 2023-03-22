@@ -1,6 +1,6 @@
 use tree_sitter as ts;
 
-pub use super::Traverse;
+pub use super::{Subtree, Traverse};
 
 pub use ts::{Language, Node, Tree, TreeCursor as Cursor};
 
@@ -25,6 +25,15 @@ pub fn parse(text: &str, language: Language, params: Params) -> Tree {
         .expect("language is set, no timeout, and no cancel")
 }
 
+impl<'t> Subtree for &'t Tree {
+    type Cursor = Cursor<'t>;
+    type Node = Node<'t>;
+
+    fn walk(self) -> Self::Cursor {
+        self.walk()
+    }
+}
+
 impl<'t> Traverse for Cursor<'t> {
     type Node = Node<'t>;
 
@@ -42,5 +51,15 @@ impl<'t> Traverse for Cursor<'t> {
 
     fn goto_parent(&mut self) -> bool {
         self.goto_parent()
+    }
+}
+
+impl<'t> Subtree for Node<'t> {
+    type Cursor = Cursor<'t>;
+
+    type Node = Self;
+
+    fn walk(self) -> Self::Cursor {
+        (&self).walk()
     }
 }
