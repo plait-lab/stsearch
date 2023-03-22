@@ -72,4 +72,8 @@ impl<C: Traverse> crate::algorithm::Traverse for C {
         }
         true
     }
+
+    fn move_next_sibling(&mut self) -> bool {
+        self.goto_next_sibling()
+    }
 }

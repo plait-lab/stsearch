@@ -53,7 +53,7 @@ where
                 phantom.restore(phantom_c);
 
                 if siblings {
-                    if phantom.next().is_some() || cursor.move_next_subtree() {
+                    if phantom.next().is_some() || cursor.move_next_sibling() {
                         checkpoints.push((pattern.checkpoint(), cursor.checkpoint(), phantom.checkpoint(), true));
                         break;
                     }
@@ -103,4 +103,6 @@ pub trait Traverse {
     fn move_first_child(&mut self) -> bool;
     #[must_use]
     fn move_next_subtree(&mut self) -> bool;
+    #[must_use]
+    fn move_next_sibling(&mut self) -> bool;
 }
