@@ -1,123 +1,147 @@
-use super::mts;
-
 pub use super::{Subtree, Traverse};
 
-pub use mts::Params;
+use std::borrow::Borrow;
 
-pub struct Document {
-    text: String,
-    tree: mts::Tree,
+use super::mts; // default tree
+
+pub struct Document<S = String, T = mts::Tree>
+where
+    S: Borrow<str>,
+    for<'t> &'t T: Subtree,
+{
+    text: S,
+    tree: T,
 }
 
-impl Document {
-    pub fn new(text: String, language: &Language, params: Params) -> Self {
-        let tree = mts::Tree::new(&text, language, params);
-        Self { text, tree }
-    }
-
+impl<S, T> Document<S, T>
+where
+    S: Borrow<str>,
+    for<'t> &'t T: Subtree,
+{
     pub fn text(&self) -> &str {
-        &self.text
+        self.text.borrow()
     }
 
-    pub fn tree(&self) -> &mts::Tree {
+    pub fn tree(&self) -> &T {
         &self.tree
     }
 }
 
-impl<'d> Subtree for &'d Document {
-    type Cursor = Cursor<'d>;
-    type Node = Node<'d>;
-
-    fn walk(self) -> Cursor<'d> {
-        Cursor {
-            doc: self,
-            mts: self.tree.walk(),
-        }
-    }
-}
-
-use std::ops::{Index, RangeInclusive};
-
-impl<'d, N> Index<RangeInclusive<N>> for Document
+impl<'d, S, T> Subtree for &'d Document<S, T>
 where
-    N: std::borrow::Borrow<Node<'d>>,
+    S: Borrow<str>,
+    for<'t> &'t T: Subtree,
 {
-    type Output = str;
+    type Cursor = Cursor<'d, <&'d T as Subtree>::Cursor>;
+    type Node = Node<'d, <&'d T as Subtree>::Node>;
 
-    fn index(&self, index: RangeInclusive<N>) -> &Self::Output {
-        &self.text[index.start().borrow().start_byte()..index.end().borrow().end_byte()]
+    fn walk(self) -> Self::Cursor {
+        Cursor {
+            text: self.text.borrow(),
+            cursor: self.tree.walk(),
+        }
     }
 }
 
 use std::ops::Deref;
 
 #[derive(Clone)]
-pub struct Cursor<'d> {
-    doc: &'d Document,
-    mts: mts::Cursor<'d>,
+pub struct Cursor<'d, C = mts::Cursor<'d>>
+where
+    C: Traverse,
+{
+    text: &'d str,
+    cursor: C,
 }
 
-impl<'d> Traverse for Cursor<'d> {
-    type Node = Node<'d>;
+impl<'d, C> Traverse for Cursor<'d, C>
+where
+    C: Traverse,
+{
+    type Node = Node<'d, C::Node>;
 
     fn node(&self) -> Self::Node {
         Node {
-            doc: self.doc,
-            mts: self.mts.node(),
+            text: self.text,
+            node: self.cursor.node(),
         }
     }
 
     fn goto_next_sibling(&mut self) -> bool {
-        self.mts.goto_next_sibling()
+        self.cursor.goto_next_sibling()
     }
 
     fn goto_first_child(&mut self) -> bool {
-        self.mts.goto_first_child()
+        self.cursor.goto_first_child()
     }
 
     fn goto_parent(&mut self) -> bool {
-        self.mts.goto_parent()
+        self.cursor.goto_parent()
     }
 }
 
-impl<'d> Deref for Cursor<'d> {
-    type Target = mts::Cursor<'d>;
+impl<'d, C> Deref for Cursor<'d, C>
+where
+    C: Traverse,
+{
+    type Target = C;
 
     fn deref(&self) -> &Self::Target {
-        &self.mts
+        &self.cursor
     }
 }
 
-#[derive(Clone)]
-pub struct Node<'d> {
-    doc: &'d Document,
-    mts: mts::Node<'d>,
+#[derive(Clone, Copy)]
+pub struct Node<'d, N: Subtree = mts::Node<'d>> {
+    text: &'d str,
+    node: N,
 }
 
-impl<'d> Node<'d> {
-    pub fn text(&self) -> &'d str {
-        &self.doc[self..=self]
+use std::ops::Index;
+
+impl<'d, N: Subtree> Node<'d, N>
+where
+    for<'n> str: Index<&'n N>,
+{
+    pub fn text(&self) -> &'d <str as Index<&'_ N>>::Output {
+        &self.text[&self.node]
     }
 }
 
-impl<'d> Subtree for Node<'d> {
-    type Cursor = Cursor<'d>;
-    type Node = Node<'d>;
+impl<'d, N: Subtree> Subtree for Node<'d, N> {
+    type Cursor = Cursor<'d, N::Cursor>;
+    type Node = Self;
 
-    fn walk(self) -> Cursor<'d> {
+    fn walk(self) -> Self::Cursor {
         Cursor {
-            doc: self.doc,
-            mts: self.mts.walk(),
+            text: self.text,
+            cursor: self.node.walk(),
         }
     }
 }
 
-impl<'d> Deref for Node<'d> {
-    type Target = mts::Node<'d>;
+impl<'d, N: Subtree> Deref for Node<'d, N> {
+    type Target = N;
 
     fn deref(&self) -> &Self::Target {
-        &self.mts
+        &self.node
     }
 }
 
-pub use mts::Language;
+impl<S> Document<S, mts::Tree>
+where
+    S: Borrow<str>,
+{
+    pub fn new(text: S, language: &mts::Language, params: mts::Params) -> Self {
+        let tree = mts::Tree::new(text.borrow(), language, params);
+        Self { text, tree }
+    }
+}
+
+impl<'n> Index<&'n mts::Node<'_>> for str {
+    type Output = str;
+
+    fn index(&self, index: &'n mts::Node) -> &Self::Output {
+        &self[index.byte_range()]
+    }
+}

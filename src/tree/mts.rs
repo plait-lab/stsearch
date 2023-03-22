@@ -144,7 +144,7 @@ impl<'t> Deref for Cursor<'t> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Node<'t> {
     tree: &'t Tree,
     ts: ts::Node<'t>,
