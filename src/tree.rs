@@ -8,6 +8,38 @@ pub trait Subtree {
 
     #[must_use]
     fn walk(self) -> Self::Cursor;
+
+    #[must_use]
+    fn dim(self) -> (usize, usize)
+    where
+        Self: Sized,
+    {
+        let (mut size, mut depth) = (1, 1);
+
+        let mut cursor = self.walk();
+        let mut level = 1;
+
+        loop {
+            while cursor.goto_first_child() {
+                size += 1;
+                level += 1;
+            }
+
+            depth = std::cmp::max(depth, level);
+
+            loop {
+                if cursor.goto_next_sibling() {
+                    size += 1;
+                    break;
+                } else if cursor.goto_parent() {
+                    level -= 1;
+                    continue;
+                }
+                assert_eq!(level, 1);
+                return  (size, depth)
+            }
+        }
+    }
 }
 
 pub trait Traverse {

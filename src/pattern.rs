@@ -76,6 +76,17 @@ impl<T> Pattern<T> {
             None => Err(start),
         }
     }
+
+    pub fn len(&self) -> usize {
+        self.sequence.len()
+    }
+
+    pub fn holes(&self) -> usize {
+        self.sequence
+            .iter()
+            .filter(|t| matches!(t, Token::Subtree | Token::Siblings))
+            .count()
+    }
 }
 
 impl<T> FromIterator<Token<T>> for Pattern<T> {
