@@ -4,7 +4,7 @@
 #define TS(NAME) tree_sitter_semgrep_##NAME
 #define SCANNER(NAME) TS(external_scanner_##NAME)
 
-#define UNUSED(X) __attribute__((unused)) unused_##X
+#define UNUSED(X) X __attribute__((unused))
 
 enum TokenType {
   TEXT,
@@ -24,6 +24,7 @@ bool SCANNER(scan)(void *payload, TSLexer *lexer, const bool *valid_symbols) {
         case '<':  // might be deep
           lexer->advance(lexer, false);
           if (lexer->lookahead != '.') break;
+	  /* fall through */
         case '.':  // might be ellipsis
           lexer->advance(lexer, false);
           if (lexer->lookahead != '.') break;
