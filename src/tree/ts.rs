@@ -42,16 +42,28 @@ impl<'t> Traverse for Cursor<'t> {
     }
 
     fn goto_next_sibling(&mut self) -> bool {
-        self.goto_next_sibling()
+        skip_extra(self, Cursor::goto_next_sibling)
     }
 
     fn goto_first_child(&mut self) -> bool {
-        self.goto_first_child()
+        skip_extra(self, Cursor::goto_first_child)
     }
 
     fn goto_parent(&mut self) -> bool {
         self.goto_parent()
     }
+}
+
+fn skip_extra<'t, N>(mut cursor: &mut Cursor<'t>, next: N) -> bool
+where
+    N: Fn(&mut Cursor<'t>) -> bool,
+{
+    while next(&mut cursor) {
+        if !cursor.node().is_extra() {
+            return true;
+        }
+    }
+    return false;
 }
 
 impl<'t> Subtree for Node<'t> {
