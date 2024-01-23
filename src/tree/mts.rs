@@ -104,11 +104,11 @@ impl<'t> Traverse for Cursor<'t> {
     }
 
     fn goto_next_sibling(&mut self) -> bool {
-        self.ts.goto_next_sibling()
+        Traverse::goto_next_sibling(&mut self.ts)
     }
 
     fn goto_first_child(&mut self) -> bool {
-        self.ts.goto_first_child() || {
+        Traverse::goto_first_child(&mut self.ts) || {
             let node = self.node();
             self.current
                 .nested_find(&node)
