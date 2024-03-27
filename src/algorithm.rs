@@ -2,18 +2,16 @@ use super::pattern;
 
 pub fn match_at<'p, P, T, C>(mut pattern: P, mut cursor: C) -> Option<C>
 where
-    P: Iterator<Item = &'p pattern::Token<T>> + Checkpoint,
-    C: Traverse + Checkpoint,
+    P: Iterator<Item = &'p pattern::Token<T>> + Clone,
+    C: Traverse,
     T: 'p + PartialEq<C::Leaf>,
 {
-    impl CloneCheckpoint for std::iter::Once<()> {}
-
     let mut phantom = std::iter::once(());
     let mut checkpoints = vec![];
 
     loop {
         loop {
-            let pattern_c = pattern.checkpoint();
+            let pattern_c = pattern.clone();
 
             match pattern.next() {
                 Some(token) => {
@@ -23,15 +21,20 @@ where
 
                     match token {
                         pattern::Token::Siblings => {
-                            checkpoints.push((pattern_c, cursor.checkpoint(), phantom.checkpoint(), false));
+                            checkpoints.push((pattern_c, cursor.clone(), phantom.clone(), false));
 
                             assert!(!phantom.next().is_some());
                             phantom = std::iter::once(());
 
-                            checkpoints.push((pattern.checkpoint(), cursor.checkpoint(), phantom.checkpoint(), true));
+                            checkpoints.push((
+                                pattern.clone(),
+                                cursor.clone(),
+                                phantom.clone(),
+                                true,
+                            ));
                         }
                         pattern::Token::Subtree => {
-                            checkpoints.push((pattern_c, cursor.checkpoint(), phantom.checkpoint(), false));
+                            checkpoints.push((pattern_c, cursor.clone(), phantom.clone(), false));
                         }
                         pattern::Token::Leaf(t) => {
                             let leaf = cursor.move_first_leaf();
@@ -47,14 +50,13 @@ where
             };
         }
         loop {
-            if let Some((pattern_c, cursor_c, phantom_c, siblings)) = checkpoints.pop() {
-                pattern.restore(pattern_c);
-                cursor.restore(cursor_c);
-                phantom.restore(phantom_c);
+            if let Some(checkpoint) = checkpoints.pop() {
+                let siblings;
+                (pattern, cursor, phantom, siblings) = checkpoint;
 
                 if siblings {
                     if phantom.next().is_some() || cursor.move_next_sibling() {
-                        checkpoints.push((pattern.checkpoint(), cursor.checkpoint(), phantom.checkpoint(), true));
+                        checkpoints.push((pattern.clone(), cursor.clone(), phantom.clone(), true));
                         break;
                     }
                 } else {
@@ -71,31 +73,8 @@ where
     }
 }
 
-// For backtracking algorithm
-pub trait Checkpoint {
-    type Checkpoint;
-
-    #[must_use]
-    fn checkpoint(&self) -> Self::Checkpoint;
-    fn restore(&mut self, checkpoint: Self::Checkpoint);
-}
-
-pub trait CloneCheckpoint: Clone {}
-
-impl<T: CloneCheckpoint> Checkpoint for T {
-    type Checkpoint = T;
-
-    fn checkpoint(&self) -> Self::Checkpoint {
-        self.clone()
-    }
-
-    fn restore(&mut self, checkpoint: Self::Checkpoint) {
-        *self = checkpoint;
-    }
-}
-
 // Inspired by tree_sitter::TreeCursor
-pub trait Traverse {
+pub trait Traverse: Clone {
     type Leaf;
 
     fn move_first_leaf(&mut self) -> Self::Leaf;

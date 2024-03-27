@@ -54,5 +54,3 @@ impl<'d> algorithm::Traverse for document::Cursor<'d> {
         self.ts.goto_next_sibling()
     }
 }
-
-impl<'d> algorithm::CloneCheckpoint for document::Cursor<'d> {}

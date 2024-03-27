@@ -1,4 +1,4 @@
-use super::algorithm::{match_at, Checkpoint, CloneCheckpoint, Traverse};
+use super::algorithm::{match_at, Traverse};
 
 #[derive(Clone, Debug)]
 pub struct Pattern<T> {
@@ -16,7 +16,7 @@ pub enum Token<T> {
 impl<T> Pattern<T> {
     pub fn find<C>(&self, mut cursor: C) -> Option<Match<C>>
     where
-        C: Traverse + Checkpoint + Clone,
+        C: Traverse,
         T: PartialEq<C::Leaf>,
     {
         let start = self
@@ -40,7 +40,7 @@ impl<T> Pattern<T> {
 
     pub fn find_iter<C>(&self, cursor: C) -> Matches<T, C>
     where
-        C: Traverse + Checkpoint + Clone,
+        C: Traverse,
         T: PartialEq<C::Leaf>,
     {
         Matches {
@@ -51,7 +51,7 @@ impl<T> Pattern<T> {
 
     pub fn find_at<C>(&self, start: C) -> Option<Match<C>>
     where
-        C: Traverse + Checkpoint + Clone,
+        C: Traverse,
         T: PartialEq<C::Leaf>,
     {
         Self::find_impl(self.sequence.iter(), start).ok()
@@ -59,15 +59,15 @@ impl<T> Pattern<T> {
 
     fn find_impl<'s, S, C>(mut seq: S, start: C) -> Result<Match<C>, C>
     where
-        S: DoubleEndedIterator<Item = &'s Token<T>> + Checkpoint + Clone,
-        C: Traverse + Checkpoint + Clone,
+        S: DoubleEndedIterator<Item = &'s Token<T>> + Clone,
+        C: Traverse,
         T: 's + PartialEq<C::Leaf>,
     {
         loop {
             // FIX: Workaround, match_at includes an extra subtree otherwise
-            let seq_c = seq.checkpoint();
+            let last = seq.clone();
             if !matches!(seq.next_back(), Some(Token::Siblings)) {
-                seq.restore(seq_c);
+                seq = last;
                 break;
             }
         }
@@ -97,8 +97,6 @@ impl<T> FromIterator<Token<T>> for Pattern<T> {
     }
 }
 
-impl<'t, T> CloneCheckpoint for std::slice::Iter<'t, Token<T>> {}
-
 // Inspired by regex::Matches
 pub struct Matches<'p, T, C> {
     pattern: &'p Pattern<T>,
@@ -107,7 +105,7 @@ pub struct Matches<'p, T, C> {
 
 impl<'p, T, C> Iterator for Matches<'p, T, C>
 where
-    C: Traverse + Checkpoint + Clone,
+    C: Traverse,
     T: PartialEq<C::Leaf>,
 {
     type Item = Match<C>;
