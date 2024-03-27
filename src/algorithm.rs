@@ -106,29 +106,3 @@ pub trait Traverse {
     #[must_use]
     fn move_next_sibling(&mut self) -> bool;
 }
-
-impl<C: crate::tree::Traverse> Traverse for C {
-    type Leaf = C::Node;
-
-    fn move_first_leaf(&mut self) -> Self::Leaf {
-        while self.goto_first_child() {}
-        self.node()
-    }
-
-    fn move_first_child(&mut self) -> bool {
-        self.goto_first_child()
-    }
-
-    fn move_next_subtree(&mut self) -> bool {
-        while !self.goto_next_sibling() {
-            if !self.goto_parent() {
-                return false;
-            }
-        }
-        true
-    }
-
-    fn move_next_sibling(&mut self) -> bool {
-        self.goto_next_sibling()
-    }
-}

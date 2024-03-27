@@ -2,9 +2,6 @@ use clap::Parser;
 
 use stsearch as st;
 
-use st::document::{Subtree, Traverse};
-use st::tree::mts::Tree;
-
 #[derive(Parser)]
 #[command(version)]
 struct Args {
@@ -20,19 +17,16 @@ fn main() {
 
     let args = Args::parse();
 
-    let language = args.language.load();
-
-    let pattern = st::pattern::Pattern::from_query(args.query, &language);
+    let pattern = st::pattern::Pattern::from_query(args.query, args.language);
 
     let text = std::fs::read_to_string(&args.file).unwrap();
-    let document =
-        st::document::new::<&str, Tree>(&text, Tree::new(&text, &language, Default::default()));
+    let document = st::document::Document::new(text, args.language.parser());
 
     let parsing = timer.elapsed();
 
     for m in pattern.find_iter(document.walk()) {
-        let start = m.start.node().start_position();
-        let end = m.end.node().end_position();
+        let start = m.start.ts.node().start_position();
+        let end = m.end.ts.node().end_position();
 
         // FIX: breaks with unicode multi-byte characters
         println!(
