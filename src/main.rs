@@ -25,8 +25,8 @@ fn main() {
     let parsing = timer.elapsed();
 
     for m in pattern.find_iter(document.walk()) {
-        let start = m.start.ts.node().start_position();
-        let end = m.end.ts.node().end_position();
+        let start = m.start.node().start_position();
+        let end = m.end.node().end_position();
 
         // FIX: breaks with unicode multi-byte characters
         println!(

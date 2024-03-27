@@ -33,17 +33,17 @@ impl<'d> algorithm::Traverse for document::Cursor<'d> {
     type Leaf = &'d str;
 
     fn move_first_leaf(&mut self) -> Self::Leaf {
-        while self.ts.goto_first_child() {}
+        while self.goto_first_child() {}
         self.text()
     }
 
     fn move_first_child(&mut self) -> bool {
-        self.ts.goto_first_child()
+        self.goto_first_child()
     }
 
     fn move_next_subtree(&mut self) -> bool {
-        while !self.ts.goto_next_sibling() {
-            if !self.ts.goto_parent() {
+        while !self.goto_next_sibling() {
+            if !self.goto_parent() {
                 return false;
             }
         }
@@ -51,6 +51,6 @@ impl<'d> algorithm::Traverse for document::Cursor<'d> {
     }
 
     fn move_next_sibling(&mut self) -> bool {
-        self.ts.goto_next_sibling()
+        self.goto_next_sibling()
     }
 }
