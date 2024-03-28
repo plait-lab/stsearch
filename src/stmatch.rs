@@ -1,8 +1,8 @@
-use super::pattern;
+use crate::Token;
 
 pub fn match_at<'p, P, T, C>(mut pattern: P, mut cursor: C) -> Option<C>
 where
-    P: Iterator<Item = &'p pattern::Token<T>> + Clone,
+    P: Iterator<Item = &'p Token<T>> + Clone,
     C: Traverse,
     T: 'p + PartialEq<C::Leaf>,
 {
@@ -20,7 +20,7 @@ where
                     }
 
                     match token {
-                        pattern::Token::Siblings => {
+                        Token::Siblings => {
                             checkpoints.push((pattern_c, cursor.clone(), phantom.clone(), false));
 
                             assert!(!phantom.next().is_some());
@@ -33,10 +33,10 @@ where
                                 true,
                             ));
                         }
-                        pattern::Token::Subtree => {
+                        Token::Subtree => {
                             checkpoints.push((pattern_c, cursor.clone(), phantom.clone(), false));
                         }
-                        pattern::Token::Leaf(t) => {
+                        Token::Leaf(t) => {
                             let leaf = cursor.move_first_leaf();
                             if *t != leaf {
                                 break;
@@ -73,7 +73,7 @@ where
     }
 }
 
-// Inspired by tree_sitter::TreeCursor
+
 pub trait Traverse: Clone {
     type Leaf;
 

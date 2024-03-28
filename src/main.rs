@@ -5,7 +5,7 @@ use stsearch as st;
 #[derive(Parser)]
 #[command(version)]
 struct Args {
-    language: st::lang::Select,
+    language: st::code::lang::Select,
     query: String,
     file: std::path::PathBuf,
     #[arg(long)]
@@ -17,10 +17,10 @@ fn main() {
 
     let args = Args::parse();
 
-    let pattern = st::pattern::Pattern::from_query(args.query, args.language);
+    let pattern = st::Pattern::from_query(args.query, args.language);
 
     let text = std::fs::read_to_string(&args.file).unwrap();
-    let document = st::document::Document::new(text, args.language.parser());
+    let document = st::code::document::Document::new(text, args.language.parser());
 
     let parsing = timer.elapsed();
 

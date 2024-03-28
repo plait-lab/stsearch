@@ -1,64 +1,141 @@
-pub mod algorithm;
+pub mod stmatch;
+pub mod code;
 
-pub mod document;
-pub mod pattern;
+#[derive(Clone, Debug)]
+pub struct Pattern<T> {
+    sequence: std::vec::Vec<Token<T>>,
+}
 
-pub mod lang;
+#[derive(Clone, Copy, Debug)]
+pub enum Token<T> {
+    Siblings,
+    Subtree,
+    Leaf(T),
+}
 
-impl pattern::Pattern<String> {
-    pub fn from_query(mut query: String, language: lang::Select) -> Self {
-        let (subtree, siblings) = match language {
-            lang::Select::Javascript => ("$_", ("...", "/**/")),
-        };
+// Inspired by regex::Regex
+impl<T> Pattern<T> {
+    pub fn find<C>(&self, mut cursor: C) -> Option<Match<C>>
+    where
+        C: stmatch::Traverse,
+        T: PartialEq<C::Leaf>,
+    {
+        let start = self
+            .sequence
+            .iter()
+            // Skip any non-greedy Kleen stars
+            .take_while(|t| matches!(t, Token::Siblings))
+            .count();
+        let sequence = &self.sequence[start..];
+        loop {
+            match Self::find_impl(sequence.iter(), cursor) {
+                Ok(r#match) => return Some(r#match),
+                Err(start) => cursor = start,
+            }
+            cursor.move_first_leaf();
+            if !cursor.move_next_subtree() {
+                break None;
+            }
+        }
+    }
 
-        // Ensure that siblings wildcard are parsed as extra
-        query = query.replace(siblings.0, siblings.1);
+    pub fn find_iter<C>(&self, cursor: C) -> Matches<T, C>
+    where
+        C: stmatch::Traverse,
+        T: PartialEq<C::Leaf>,
+    {
+        Matches {
+            pattern: self,
+            cursor: Some(cursor),
+        }
+    }
 
-        let document = document::Document::new(query, language.parser());
+    pub fn find_at<C>(&self, start: C) -> Option<Match<C>>
+    where
+        C: stmatch::Traverse,
+        T: PartialEq<C::Leaf>,
+    {
+        Self::find_impl(self.sequence.iter(), start).ok()
+    }
 
-        document
-            .leaves()
-            .drain(..)
-            .flat_map(|leaf| match leaf {
-                "" => None,
-                tok if tok == subtree => Some(pattern::Token::Subtree),
-                tok if tok == siblings.1 => Some(pattern::Token::Siblings),
-                leaf => Some(pattern::Token::Leaf(leaf.to_owned())),
-            })
-            .collect()
+    fn find_impl<'s, S, C>(mut seq: S, start: C) -> Result<Match<C>, C>
+    where
+        S: DoubleEndedIterator<Item = &'s Token<T>> + Clone,
+        C: stmatch::Traverse,
+        T: 's + PartialEq<C::Leaf>,
+    {
+        loop {
+            // FIX: Workaround, match_at includes an extra subtree otherwise
+            let last = seq.clone();
+            if !matches!(seq.next_back(), Some(Token::Siblings)) {
+                seq = last;
+                break;
+            }
+        }
+        match stmatch::match_at(seq.into_iter(), start.clone()) {
+            Some(end) => Ok(Match { start, end }),
+            None => Err(start),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.sequence.len()
+    }
+
+    pub fn holes(&self) -> usize {
+        self.sequence
+            .iter()
+            .filter(|t| matches!(t, Token::Subtree | Token::Siblings))
+            .count()
     }
 }
 
-impl<'d> algorithm::Traverse for document::Cursor<'d> {
-    // Skips "extra" nodes to effectively drop comments
-
-    type Leaf = &'d str;
-
-    fn move_first_leaf(&mut self) -> Self::Leaf {
-        while self.move_first_child() {}
-        self.text()
-    }
-
-    fn move_first_child(&mut self) -> bool {
-        self.goto_first_child()
-            && (!self.node().is_extra() || self.move_next_sibling() || !self.goto_parent())
-    }
-
-    fn move_next_subtree(&mut self) -> bool {
-        while !self.move_next_sibling() {
-            if !self.goto_parent() {
-                return false;
-            }
+impl<T> FromIterator<Token<T>> for Pattern<T> {
+    fn from_iter<I: IntoIterator<Item = Token<T>>>(iter: I) -> Self {
+        Self {
+            sequence: iter.into_iter().collect(),
         }
-        true
     }
+}
 
-    fn move_next_sibling(&mut self) -> bool {
-        while self.goto_next_sibling() {
-            if !self.node().is_extra() {
-                return true;
-            }
-        }
-        return false;
+// Inspired by regex::Matches
+pub struct Matches<'p, T, C> {
+    pattern: &'p Pattern<T>,
+    cursor: Option<C>,
+}
+
+impl<'p, T, C> Iterator for Matches<'p, T, C>
+where
+    C: stmatch::Traverse,
+    T: PartialEq<C::Leaf>,
+{
+    type Item = Match<C>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.cursor
+            .take()
+            .and_then(|cursor| self.pattern.find(cursor))
+            .map(|r#match| {
+                let mut start = r#match.start.clone();
+                if matches!(self.pattern.sequence.first(), Some(Token::Subtree)) {
+                    // FIX: might cause duplicate matches
+                    if start.move_first_child() || start.move_next_subtree() {
+                        self.cursor = Some(start);
+                    }
+                } else {
+                    start.move_first_leaf();
+                    if start.move_next_subtree() {
+                        self.cursor = Some(start);
+                    }
+                }
+                r#match
+            })
     }
+}
+
+// Inspired by regex::Match
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Match<C> {
+    pub start: C,
+    pub end: C,
 }
