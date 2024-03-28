@@ -30,19 +30,22 @@ impl pattern::Pattern<String> {
 }
 
 impl<'d> algorithm::Traverse for document::Cursor<'d> {
+    // Skips "extra" nodes to effectively drop comments
+
     type Leaf = &'d str;
 
     fn move_first_leaf(&mut self) -> Self::Leaf {
-        while self.goto_first_child() {}
+        while self.move_first_child() {}
         self.text()
     }
 
     fn move_first_child(&mut self) -> bool {
         self.goto_first_child()
+            && (!self.node().is_extra() || self.move_next_sibling() || !self.goto_parent())
     }
 
     fn move_next_subtree(&mut self) -> bool {
-        while !self.goto_next_sibling() {
+        while !self.move_next_sibling() {
             if !self.goto_parent() {
                 return false;
             }
@@ -51,6 +54,11 @@ impl<'d> algorithm::Traverse for document::Cursor<'d> {
     }
 
     fn move_next_sibling(&mut self) -> bool {
-        self.goto_next_sibling()
+        while self.goto_next_sibling() {
+            if !self.node().is_extra() {
+                return true;
+            }
+        }
+        return false;
     }
 }
