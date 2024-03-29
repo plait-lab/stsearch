@@ -11,77 +11,71 @@ pub enum Wildcard {
 }
 
 pub fn match_at<T, C: Cursor<T>>(pattern: &[Item<T>], mut cursor: C) -> Option<C> {
-    let mut phantom = std::iter::once(());
     let mut checkpoints = vec![];
 
-    let mut pattern = pattern.iter();
+    let mut phantom = std::iter::once(());
+    let mut start = 0;
 
-    loop {
-        loop {
-            let pattern_c = pattern.clone();
-
-            match pattern.next() {
-                Some(token) => {
-                    if !(phantom.next().is_some() || cursor.move_next_subtree()) {
-                        break;
-                    }
-
-                    match token {
-                        Item::Wildcard(wildcard) => {
-                            checkpoints.push((
-                                Wildcard::Subtree,
-                                (pattern_c, cursor.clone(), phantom.clone()),
-                            ));
-
-                            if let Wildcard::Siblings = wildcard {
-                                assert!(!phantom.next().is_some());
-                                phantom = std::iter::once(());
-
-                                checkpoints.push((
-                                    Wildcard::Siblings,
-                                    (pattern.clone(), cursor.clone(), phantom.clone()),
-                                ));
-                            }
-                        }
-                        Item::Concrete(t) => {
-                            let leaf = cursor.move_first_leaf();
-                            if leaf != *t {
-                                break;
-                            }
-                        }
-                    }
+    'check: loop {
+        'candidate: {
+            for (i, token) in pattern.iter().enumerate().skip(start) {
+                if !(phantom.next().is_some() || cursor.move_next_subtree()) {
+                    break 'candidate;
                 }
-                None => {
-                    return Some(cursor);
-                }
-            };
-        }
-        loop {
-            if let Some((kind, state)) = checkpoints.pop() {
-                (pattern, cursor, phantom) = state;
 
-                match kind {
-                    Wildcard::Subtree => {
-                        assert!(!phantom.next().is_some());
-                        if cursor.move_first_child() {
+                match token {
+                    Item::Wildcard(wildcard) => {
+                        checkpoints.push((
+                            Wildcard::Subtree, // might be further down
+                            (i, cursor.clone(), phantom.clone()),
+                        ));
+
+                        if let Wildcard::Siblings = wildcard {
+                            assert!(!phantom.next().is_some());
                             phantom = std::iter::once(());
-                            break;
+
+                            checkpoints.push((
+                                Wildcard::Siblings, // might include more node
+                                (i, cursor.clone(), phantom.clone()),
+                            ));
                         }
                     }
-                    Wildcard::Siblings => {
-                        if phantom.next().is_some() || cursor.move_next_sibling() {
-                            checkpoints.push((
-                                Wildcard::Siblings,
-                                (pattern.clone(), cursor.clone(), phantom.clone()),
-                            ));
-                            break;
+                    Item::Concrete(t) => {
+                        let leaf = cursor.move_first_leaf();
+                        if leaf != *t {
+                            break 'candidate;
                         }
                     }
                 }
-            } else {
-                return None;
+            }
+            return Some(cursor);
+        }
+
+        while let Some((kind, state)) = checkpoints.pop() {
+            (start, cursor, phantom) = state;
+
+            match kind {
+                Wildcard::Subtree => {
+                    assert!(!phantom.next().is_some());
+                    if cursor.move_first_child() {
+                        phantom = std::iter::once(());
+                        continue 'check;
+                    }
+                }
+                Wildcard::Siblings => {
+                    if phantom.next().is_some() || cursor.move_next_sibling() {
+                        checkpoints.push((
+                            Wildcard::Siblings, // might be on left spine
+                            (start, cursor.clone(), phantom.clone()),
+                        ));
+                        start += 1; // skip wildcard
+                        continue 'check;
+                    }
+                }
             }
         }
+
+        return None;
     }
 }
 
