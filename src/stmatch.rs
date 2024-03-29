@@ -1,3 +1,5 @@
+// Extended to: 1. minimize cursor cloning, 2. support sibling wildcards, & 3. track end
+
 #[derive(Clone, Copy, Debug)]
 pub enum Item<T> {
     Wildcard(Wildcard),
