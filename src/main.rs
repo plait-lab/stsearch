@@ -43,7 +43,7 @@ fn main() {
 
     if args.metrics {
         let (n, d) = document.dim();
-        let (k, h) = (pattern.len(), pattern.holes());
+        let (k, h) = (pattern.0.len(), pattern.holes());
         eprintln!(
             "{},{},{},{},{:?},{:?}",
             n, // tree size

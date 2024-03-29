@@ -46,10 +46,6 @@ impl<T> Pattern<T> {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
     pub fn holes(&self) -> usize {
         self.0
             .iter()
