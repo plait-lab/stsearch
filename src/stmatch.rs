@@ -1,13 +1,15 @@
-use crate::Token;
+#[derive(Clone, Copy, Debug)]
+pub enum Item<T> {
+    Subtree,
+    Siblings,
+    Concrete(T),
+}
 
-pub fn match_at<'p, P, T, C>(mut pattern: P, mut cursor: C) -> Option<C>
-where
-    P: Iterator<Item = &'p Token<T>> + Clone,
-    C: Traverse,
-    T: 'p + PartialEq<C::Leaf>,
-{
+pub fn match_at<T, C: Cursor<T>>(pattern: &[Item<T>], mut cursor: C) -> Option<C> {
     let mut phantom = std::iter::once(());
     let mut checkpoints = vec![];
+
+    let mut pattern = pattern.iter();
 
     loop {
         loop {
@@ -20,7 +22,7 @@ where
                     }
 
                     match token {
-                        Token::Siblings => {
+                        Item::Siblings => {
                             checkpoints.push((pattern_c, cursor.clone(), phantom.clone(), false));
 
                             assert!(!phantom.next().is_some());
@@ -33,12 +35,12 @@ where
                                 true,
                             ));
                         }
-                        Token::Subtree => {
+                        Item::Subtree => {
                             checkpoints.push((pattern_c, cursor.clone(), phantom.clone(), false));
                         }
-                        Token::Leaf(t) => {
+                        Item::Concrete(t) => {
                             let leaf = cursor.move_first_leaf();
-                            if *t != leaf {
+                            if leaf != *t {
                                 break;
                             }
                         }
@@ -73,9 +75,8 @@ where
     }
 }
 
-
-pub trait Traverse: Clone {
-    type Leaf;
+pub trait Cursor<T>: Clone {
+    type Leaf: PartialEq<T>;
 
     fn move_first_leaf(&mut self) -> Self::Leaf;
     #[must_use]

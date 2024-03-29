@@ -1,4 +1,4 @@
-use crate::{stmatch, Pattern, Token};
+use crate::{stmatch, Pattern, Item};
 
 pub mod lang;
 pub mod document;
@@ -19,15 +19,15 @@ impl Pattern<String> {
             .drain(..)
             .flat_map(|leaf| match leaf {
                 "" => None,
-                tok if tok == subtree => Some(Token::Subtree),
-                tok if tok == siblings.1 => Some(Token::Siblings),
-                leaf => Some(Token::Leaf(leaf.to_owned())),
+                tok if tok == subtree => Some(Item::Subtree),
+                tok if tok == siblings.1 => Some(Item::Siblings),
+                leaf => Some(Item::Concrete(leaf.to_owned())),
             })
             .collect()
     }
 }
 
-impl<'d> stmatch::Traverse for document::Cursor<'d> {
+impl<'d> stmatch::Cursor<String> for document::Cursor<'d> {
     // Skips "extra" nodes to effectively drop comments
 
     type Leaf = &'d str;
