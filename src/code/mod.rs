@@ -1,4 +1,4 @@
-use crate::{stmatch, Item, Pattern};
+use crate::{stmatch, Item, Pattern, Wildcard};
 
 pub mod document;
 pub mod lang;
@@ -25,8 +25,8 @@ impl Token<String> {
                 let range = node.byte_range();
                 if node.child_count() == 0 && !range.is_empty() {
                     tokens.push(match cursor.text() {
-                        token if token == subtree => Item::Subtree,
-                        token if token == siblings.1 => Item::Siblings,
+                        token if token == subtree => Item::Wildcard(Wildcard::Subtree),
+                        token if token == siblings.1 => Item::Wildcard(Wildcard::Siblings),
                         token => Item::Concrete(Token(token.to_owned())),
                     })
                 }

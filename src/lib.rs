@@ -5,7 +5,7 @@ pub mod code;
 
 #[derive(Clone, Debug)]
 pub struct Pattern<T>(pub Vec<Item<T>>);
-pub use stmatch::{Item, Cursor};
+pub use stmatch::{Cursor, Item, Wildcard};
 
 // Inspired by regex::Regex
 impl<T> Pattern<T> {
@@ -13,7 +13,7 @@ impl<T> Pattern<T> {
         let start = self
             .0
             .iter()
-            .take_while(|t| matches!(t, Item::Siblings))
+            .take_while(|t| matches!(t, Item::Wildcard(Wildcard::Siblings)))
             .count();
         let sequence = &self.0[start..];
         loop {
@@ -44,7 +44,7 @@ impl<T> Pattern<T> {
         let end = sequence
             .iter()
             .rev()
-            .take_while(|t| matches!(t, Item::Siblings))
+            .take_while(|t| matches!(t, Item::Wildcard(Wildcard::Siblings)))
             .count();
         sequence = &sequence[..sequence.len() - end];
         match stmatch::match_at(sequence, start.clone()) {
@@ -60,7 +60,7 @@ impl<T> Pattern<T> {
     pub fn holes(&self) -> usize {
         self.0
             .iter()
-            .filter(|t| matches!(t, Item::Subtree | Item::Siblings))
+            .filter(|t| matches!(t, Item::Wildcard(_)))
             .count()
     }
 }
@@ -86,7 +86,7 @@ impl<'p, T, C: Cursor<T>> Iterator for Matches<'p, T, C> {
             .and_then(|cursor| self.pattern.find(cursor))
             .map(|r#match| {
                 let mut start = r#match.start.clone();
-                if matches!(self.pattern.0.first(), Some(Item::Subtree)) {
+                if matches!(self.pattern.0.first(), Some(Item::Wildcard(Wildcard::Subtree))) {
                     // FIX: might cause duplicate matches
                     if start.move_first_child() || start.move_next_subtree() {
                         self.cursor = Some(start);

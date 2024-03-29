@@ -1,8 +1,13 @@
 #[derive(Clone, Copy, Debug)]
 pub enum Item<T> {
+    Wildcard(Wildcard),
+    Concrete(T),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Wildcard {
     Subtree,
     Siblings,
-    Concrete(T),
 }
 
 pub fn match_at<T, C: Cursor<T>>(pattern: &[Item<T>], mut cursor: C) -> Option<C> {
@@ -22,21 +27,21 @@ pub fn match_at<T, C: Cursor<T>>(pattern: &[Item<T>], mut cursor: C) -> Option<C
                     }
 
                     match token {
-                        Item::Siblings => {
-                            checkpoints.push((pattern_c, cursor.clone(), phantom.clone(), false));
-
-                            assert!(!phantom.next().is_some());
-                            phantom = std::iter::once(());
-
+                        Item::Wildcard(wildcard) => {
                             checkpoints.push((
-                                pattern.clone(),
-                                cursor.clone(),
-                                phantom.clone(),
-                                true,
+                                Wildcard::Subtree,
+                                (pattern_c, cursor.clone(), phantom.clone()),
                             ));
-                        }
-                        Item::Subtree => {
-                            checkpoints.push((pattern_c, cursor.clone(), phantom.clone(), false));
+
+                            if let Wildcard::Siblings = wildcard {
+                                assert!(!phantom.next().is_some());
+                                phantom = std::iter::once(());
+
+                                checkpoints.push((
+                                    Wildcard::Siblings,
+                                    (pattern.clone(), cursor.clone(), phantom.clone()),
+                                ));
+                            }
                         }
                         Item::Concrete(t) => {
                             let leaf = cursor.move_first_leaf();
@@ -52,20 +57,25 @@ pub fn match_at<T, C: Cursor<T>>(pattern: &[Item<T>], mut cursor: C) -> Option<C
             };
         }
         loop {
-            if let Some(checkpoint) = checkpoints.pop() {
-                let siblings;
-                (pattern, cursor, phantom, siblings) = checkpoint;
+            if let Some((kind, state)) = checkpoints.pop() {
+                (pattern, cursor, phantom) = state;
 
-                if siblings {
-                    if phantom.next().is_some() || cursor.move_next_sibling() {
-                        checkpoints.push((pattern.clone(), cursor.clone(), phantom.clone(), true));
-                        break;
+                match kind {
+                    Wildcard::Subtree => {
+                        assert!(!phantom.next().is_some());
+                        if cursor.move_first_child() {
+                            phantom = std::iter::once(());
+                            break;
+                        }
                     }
-                } else {
-                    assert!(!phantom.next().is_some());
-                    if cursor.move_first_child() {
-                        phantom = std::iter::once(());
-                        break;
+                    Wildcard::Siblings => {
+                        if phantom.next().is_some() || cursor.move_next_sibling() {
+                            checkpoints.push((
+                                Wildcard::Siblings,
+                                (pattern.clone(), cursor.clone(), phantom.clone()),
+                            ));
+                            break;
+                        }
                     }
                 }
             } else {
