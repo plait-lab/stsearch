@@ -39,14 +39,7 @@ impl<T> Pattern<T> {
         Self::find_impl(&self.0, start).ok()
     }
 
-    fn find_impl<C: Cursor<T>>(mut sequence: &[Item<T>], start: C) -> Result<Match<C>, C> {
-        // FIX: Workaround, match_at includes an extra subtree otherwise
-        let end = sequence
-            .iter()
-            .rev()
-            .take_while(|t| matches!(t, Item::Wildcard(Wildcard::Siblings)))
-            .count();
-        sequence = &sequence[..sequence.len() - end];
+    fn find_impl<C: Cursor<T>>(sequence: &[Item<T>], start: C) -> Result<Match<C>, C> {
         match stmatch::match_at(sequence, start.clone()) {
             Some(end) => Ok(Match { start, end }),
             None => Err(start),
@@ -86,15 +79,17 @@ impl<'p, T, C: Cursor<T>> Iterator for Matches<'p, T, C> {
             .and_then(|cursor| self.pattern.find(cursor))
             .map(|r#match| {
                 let mut start = r#match.start.clone();
-                if matches!(self.pattern.0.first(), Some(Item::Wildcard(Wildcard::Subtree))) {
-                    // FIX: might cause duplicate matches
-                    if start.move_first_child() || start.move_next_subtree() {
-                        self.cursor = Some(start);
+                match self.pattern.0.first() {
+                    Some(Item::Wildcard(_)) | None => {
+                        if start.move_first_child() || start.move_next_subtree() {
+                            self.cursor = Some(start);
+                        }
                     }
-                } else {
-                    start.move_first_leaf();
-                    if start.move_next_subtree() {
-                        self.cursor = Some(start);
+                    Some(Item::Concrete(_)) => {
+                        start.move_first_leaf();
+                        if start.move_next_subtree() {
+                            self.cursor = Some(start);
+                        }
                     }
                 }
                 r#match
