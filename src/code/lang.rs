@@ -1,8 +1,10 @@
+#[cfg(feature = "cli")]
 use clap::ValueEnum;
 
-#[derive(Clone, Copy, Debug, ValueEnum)]
+#[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "cli", derive(ValueEnum))]
 pub enum Select {
-    #[value(alias("js"))]
+    #[cfg_attr(feature = "cli", value(alias("js")))]
     Javascript,
 }
 

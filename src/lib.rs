@@ -1,5 +1,6 @@
 pub mod stmatch;
 
+#[cfg(feature = "code")]
 pub mod code;
 
 #[derive(Clone, Debug)]
