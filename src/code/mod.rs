@@ -1,40 +1,49 @@
-use crate::{stmatch, Pattern, Item};
+use crate::{stmatch, Item, Pattern};
 
-pub mod lang;
 pub mod document;
+pub mod lang;
 
-impl Pattern<String> {
-    pub fn from_query(mut query: String, language: lang::Select) -> Self {
+use std::borrow::Borrow;
+
+#[derive(Clone, Copy, Debug)]
+pub struct Token<S: Borrow<str>>(S);
+
+impl Token<String> {
+    pub fn pattern(pattern: &str, language: lang::Select) -> Pattern<Self> {
         let (subtree, siblings) = match language {
             lang::Select::Javascript => ("$_", ("...", "/**/")),
         };
 
         // Ensure that siblings wildcard are parsed as extra
-        query = query.replace(siblings.0, siblings.1);
+        let translated = pattern.replace(siblings.0, siblings.1);
 
-        let document = document::Document::new(query, language.parser());
+        let mut tokens = vec![];
+        document::Document::new(translated, language.parser())
+            .walk()
+            .foreach(|cursor| {
+                let node = cursor.node();
+                let range = node.byte_range();
+                if node.child_count() == 0 && !range.is_empty() {
+                    tokens.push(match cursor.text() {
+                        token if token == subtree => Item::Subtree,
+                        token if token == siblings.1 => Item::Siblings,
+                        token => Item::Concrete(Token(token.to_owned())),
+                    })
+                }
+            });
 
-        document
-            .leaves()
-            .drain(..)
-            .flat_map(|leaf| match leaf {
-                "" => None,
-                tok if tok == subtree => Some(Item::Subtree),
-                tok if tok == siblings.1 => Some(Item::Siblings),
-                leaf => Some(Item::Concrete(leaf.to_owned())),
-            })
-            .collect()
+        Pattern(tokens)
     }
 }
 
-impl<'d> stmatch::Cursor<String> for document::Cursor<'d> {
-    // Skips "extra" nodes to effectively drop comments
+impl<'d> stmatch::Cursor<Token<String>> for document::Cursor<'d> {
+    // Skips "extra" nodes to ignore comments when matching
 
-    type Leaf = &'d str;
+    type Leaf = Token<&'d str>;
 
     fn move_first_leaf(&mut self) -> Self::Leaf {
         while self.move_first_child() {}
-        self.text()
+        Token(self.text())
     }
 
     fn move_first_child(&mut self) -> bool {
@@ -58,5 +67,11 @@ impl<'d> stmatch::Cursor<String> for document::Cursor<'d> {
             }
         }
         return false;
+    }
+}
+
+impl<L: Borrow<str>, R: Borrow<str>> PartialEq<Token<R>> for Token<L> {
+    fn eq(&self, other: &Token<R>) -> bool {
+        self.0.borrow() == other.0.borrow()
     }
 }

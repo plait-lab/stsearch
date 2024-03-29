@@ -26,16 +26,6 @@ impl Document {
         }
     }
 
-    pub fn leaves(&self) -> Vec<&str> {
-        let mut leaves = vec![];
-        self.walk().foreach(|cursor| {
-            if cursor.node().child_count() == 0 {
-                leaves.push(cursor.text())
-            }
-        });
-        leaves
-    }
-
     pub fn dim(&self) -> (usize, usize) {
         let (mut size, mut depth) = (1, 1);
         self.walk().foreach(|cursor| {
@@ -111,7 +101,7 @@ impl<'d> Cursor<'d> {
             }
 
             if !self.goto_next_subtree() {
-                break
+                break;
             }
         }
     }

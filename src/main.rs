@@ -17,7 +17,7 @@ fn main() {
 
     let args = Args::parse();
 
-    let pattern = st::Pattern::from_query(args.query, args.language);
+    let pattern = st::code::Token::pattern(&args.query, args.language);
 
     let text = std::fs::read_to_string(&args.file).unwrap();
     let document = st::code::document::Document::new(text, args.language.parser());
