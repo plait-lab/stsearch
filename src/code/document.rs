@@ -21,15 +21,14 @@ impl Document {
     pub fn walk(&self) -> Cursor {
         Cursor {
             text: &self.text,
-            path: vec![],
             ts: self.tree.walk(),
         }
     }
 
     pub fn dim(&self) -> (usize, usize) {
-        let (mut size, mut depth) = (1, 1);
-        self.walk().foreach(|cursor| {
-            depth = std::cmp::max(cursor.path.len() + 1, depth);
+        let (mut size, mut depth) = (0, 0);
+        self.walk().foreach(|path, _| {
+            depth = std::cmp::max(path.len() + 1, depth);
             size += 1;
         });
         return (size, depth);
@@ -39,8 +38,7 @@ impl Document {
 #[derive(Clone)]
 pub struct Cursor<'d> {
     text: &'d str,
-    path: Vec<usize>,
-    ts: ts::TreeCursor<'d>,
+    pub ts: ts::TreeCursor<'d>,
 }
 
 impl<'d> Cursor<'d> {
@@ -48,61 +46,26 @@ impl<'d> Cursor<'d> {
         &self.text[self.ts.node().byte_range()]
     }
 
-    pub fn path(&self) -> &[usize] {
-        &self.path
-    }
-
-    pub fn node(&self) -> tree_sitter::Node {
-        self.ts.node()
-    }
-
-    #[must_use]
-    pub fn goto_first_child(&mut self) -> bool {
-        self.ts
-            .goto_first_child()
-            .then(|| self.path.push(0))
-            .is_some()
-    }
-
-    #[must_use]
-    pub fn goto_next_sibling(&mut self) -> bool {
-        self.path
-            .last_mut()
-            .and_then(|i| self.ts.goto_next_sibling().then(|| *i += 1))
-            .is_some()
-    }
-
-    #[must_use]
-    pub fn goto_parent(&mut self) -> bool {
-        self.path
-            .pop()
-            .map(|_i| {
-                assert!(self.ts.goto_parent());
-            })
-            .is_some()
-    }
-
-    #[must_use]
-    pub fn goto_next_subtree(&mut self) -> bool {
+    pub fn foreach<F: FnMut(&Path, &Cursor<'d>)>(&mut self, mut callback: F) {
+        let mut path = vec![];
         loop {
-            if self.goto_next_sibling() {
-                return true;
-            } else if !self.goto_parent() {
-                return false;
+            callback(&path, &self);
+            if self.ts.goto_first_child() {
+                path.push(0);
+                continue;
             }
-        }
-    }
-
-    pub fn foreach<F: FnMut(&Cursor<'d>)>(&mut self, mut callback: F) {
-        loop {
-            callback(&self);
-            while self.goto_first_child() {
-                callback(&self);
-            }
-
-            if !self.goto_next_subtree() {
-                break;
+            loop {
+                if self.ts.goto_next_sibling() {
+                    *path.last_mut().unwrap() += 1;
+                    break;
+                } else if self.ts.goto_parent() {
+                    path.pop();
+                    continue;
+                }
+                return;
             }
         }
     }
 }
+
+type Path = [usize];

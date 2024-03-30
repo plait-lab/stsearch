@@ -20,8 +20,8 @@ impl Token<String> {
         let mut tokens = vec![];
         document::Document::new(translated, language.parser())
             .walk()
-            .foreach(|cursor| {
-                let node = cursor.node();
+            .foreach(|_, cursor| {
+                let node = cursor.ts.node();
                 let range = node.byte_range();
                 if node.child_count() == 0 && !range.is_empty() {
                     tokens.push(match cursor.text() {
@@ -47,13 +47,13 @@ impl<'d> stmatch::Cursor<Token<String>> for document::Cursor<'d> {
     }
 
     fn move_first_child(&mut self) -> bool {
-        self.goto_first_child()
-            && (!self.node().is_extra() || self.move_next_sibling() || !self.goto_parent())
+        self.ts.goto_first_child()
+            && (!self.ts.node().is_extra() || self.move_next_sibling() || !self.ts.goto_parent())
     }
 
     fn move_next_subtree(&mut self) -> bool {
         while !self.move_next_sibling() {
-            if !self.goto_parent() {
+            if !self.ts.goto_parent() {
                 return false;
             }
         }
@@ -61,8 +61,8 @@ impl<'d> stmatch::Cursor<Token<String>> for document::Cursor<'d> {
     }
 
     fn move_next_sibling(&mut self) -> bool {
-        while self.goto_next_sibling() {
-            if !self.node().is_extra() {
+        while self.ts.goto_next_sibling() {
+            if !self.ts.node().is_extra() {
                 return true;
             }
         }
