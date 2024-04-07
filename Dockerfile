@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM rust:1.64-slim
+FROM rust:1.73-slim
 
 WORKDIR /stsearch
 COPY . .
 
-RUN cargo build --release
+RUN cargo build --all-features --release
